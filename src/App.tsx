@@ -29,7 +29,7 @@ export default function App() {
   const [isConnected, setIsConnected] = useState(false)
   const [activeTab, setActiveTab] = useState<'opportunities' | 'transactions'>('opportunities')
   const wsRef = useRef<WebSocket | null>(null)
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const connectWebSocket = () => {

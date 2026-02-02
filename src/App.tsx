@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Header from './components/Header'
 import StatsGrid from './components/StatsGrid'
@@ -20,25 +20,64 @@ const INITIAL_DATA: BotData = {
   solPrice: 0,
 }
 
+const API_URL = import.meta.env.VITE_BOT_API_URL || 'http://localhost:3001'
+
 export default function App() {
   const [botData, setBotData] = useState<BotData>(INITIAL_DATA)
-  const [opportunities, _setOpportunities] = useState<Opportunity[]>([])
-  const [transactions, _setTransactions] = useState<Transaction[]>([])
-  const [isConnected, _setIsConnected] = useState(false)
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [isConnected, setIsConnected] = useState(false)
   const [activeTab, setActiveTab] = useState<'opportunities' | 'transactions'>('opportunities')
+  const wsRef = useRef<WebSocket | null>(null)
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // TODO: Connect to bot API via WebSocket
-  // useEffect(() => {
-  //   const ws = new WebSocket(import.meta.env.VITE_BOT_API_URL)
-  //   ws.onmessage = (event) => {
-  //     const data = JSON.parse(event.data)
-  //     setBotData(data.botData)
-  //     setOpportunities(data.opportunities)
-  //     setTransactions(data.transactions)
-  //     setIsConnected(true)
-  //   }
-  //   return () => ws.close()
-  // }, [])
+  useEffect(() => {
+    const connectWebSocket = () => {
+      const wsUrl = API_URL.replace('http://', 'ws://').replace('https://', 'wss://')
+      console.log('[WS] Connecting to:', wsUrl)
+      
+      const ws = new WebSocket(wsUrl)
+      wsRef.current = ws
+
+      ws.onopen = () => {
+        console.log('[WS] Connected')
+        setIsConnected(true)
+      }
+
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data)
+          if (message.type === 'init' || message.type === 'update') {
+            const { botData: bd, opportunities: opps, transactions: txs } = message.data
+            if (bd) setBotData({ ...bd, status: 'running' })
+            if (opps) setOpportunities(opps)
+            if (txs) setTransactions(txs)
+          }
+        } catch (e) {
+          console.error('[WS] Parse error:', e)
+        }
+      }
+
+      ws.onclose = () => {
+        console.log('[WS] Disconnected, reconnecting in 5s...')
+        setIsConnected(false)
+        setBotData(prev => ({ ...prev, status: 'disconnected' }))
+        reconnectTimeoutRef.current = setTimeout(connectWebSocket, 5000)
+      }
+
+      ws.onerror = (err) => {
+        console.error('[WS] Error:', err)
+        ws.close()
+      }
+    }
+
+    connectWebSocket()
+
+    return () => {
+      if (wsRef.current) wsRef.current.close()
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-dark-900">

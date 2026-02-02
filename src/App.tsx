@@ -129,9 +129,9 @@ const DEMO_TRANSACTIONS: Transaction[] = [
 
 export default function App() {
   const [botData, setBotData] = useState<BotData>(DEMO_DATA)
-  const [opportunities, setOpportunities] = useState<Opportunity[]>(DEMO_OPPORTUNITIES)
-  const [transactions, setTransactions] = useState<Transaction[]>(DEMO_TRANSACTIONS)
-  const [isConnected, setIsConnected] = useState(true)
+  const [opportunities, _setOpportunities] = useState<Opportunity[]>(DEMO_OPPORTUNITIES)
+  const [transactions, _setTransactions] = useState<Transaction[]>(DEMO_TRANSACTIONS)
+  const [isConnected, _setIsConnected] = useState(true)
   const [activeTab, setActiveTab] = useState<'opportunities' | 'transactions'>('opportunities')
 
   useEffect(() => {
